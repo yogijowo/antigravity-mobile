@@ -1,0 +1,67 @@
+<resources>
+    <string name="app_name">Antigrafity Remote</string>
+
+    <!-- Navigation & Controls -->
+    <string name="cd_floating_menu_toggle">Buka atau tutup menu kontrol cepat</string>
+    <string name="cd_tuck_pill">Sembunyikan tombol melayang ke tepi layar</string>
+    <string name="cd_untuck_pill">Tampilkan kembali tombol melayang</string>
+    <string name="cd_action_back">Kembali ke halaman sebelumnya</string>
+    <string name="cd_action_home">Buka halaman utama Antigrafity</string>
+    <string name="cd_action_voice">Mulai perintah suara</string>
+    <string name="cd_action_notifications">Pengaturan notifikasi lokal</string>
+    <string name="cd_action_refresh">Muat ulang halaman</string>
+    <string name="cd_close_popup">Tutup jendela login</string>
+    <string name="action_back">Kembali</string>
+    <string name="action_home">Beranda</string>
+    <string name="action_voice">Suara</string>
+    <string name="action_notif">Notifikasi</string>
+    <string name="action_refresh">Muat Ulang</string>
+    <string name="action_hide">Tepi</string>
+    <string name="action_close">Tutup</string>
+
+    <!-- Exit & Errors -->
+    <string name="press_back_again_to_exit">Tekan kembali sekali lagi untuk keluar</string>
+    <string name="offline_title">Halaman Tidak Dapat Dimuat</string>
+    <string name="offline_subtitle">Gagal memuat %1$s. Periksa koneksi internet Anda lalu coba lagi.</string>
+    <string name="action_retry">Coba Lagi</string>
+    <string name="oauth_dialog_title">Login Google</string>
+    <string name="oauth_secure_connection">Sesi aman di dalam aplikasi</string>
+
+    <!-- Voice Command -->
+    <string name="voice_title">Perintah Suara</string>
+    <string name="voice_listening">Mendengarkan… silakan berbicara</string>
+    <string name="voice_processing">Memproses suara…</string>
+    <string name="voice_ready">Ketuk mikrofon untuk mulai berbicara</string>
+    <string name="voice_injected">Teks dikirim ke kolom input web</string>
+    <string name="voice_no_input_found">Teks diterima, tetapi kolom input aktif tidak ditemukan di halaman</string>
+    <string name="voice_permission_denied">Izin mikrofon diperlukan untuk perintah suara</string>
+    <string name="voice_unavailable">Layanan pengenalan suara tidak tersedia di perangkat ini</string>
+    <string name="voice_lang_id">Indonesia (id-ID)</string>
+    <string name="voice_lang_en">English (en-US)</string>
+    <string name="action_cancel">Batal</string>
+    <string name="action_stop_and_send">Selesai</string>
+    <string name="cd_voice_mic">Tombol mikrofon perintah suara</string>
+
+    <!-- Local Notifications -->
+    <string name="notif_sheet_title">Notifikasi Lokal</string>
+    <string name="notif_sheet_subtitle">Atur pengingat terjadwal dan jembatan notifikasi web</string>
+    <string name="notif_enable_label">Aktifkan Pengingat Terjadwal</string>
+    <string name="notif_enable_desc">Berjalan otomatis di latar belakang menggunakan WorkManager</string>
+    <string name="notif_permission_needed">Izin notifikasi Android 13+ belum diberikan</string>
+    <string name="notif_grant_permission">Izinkan</string>
+    <string name="notif_interval_label">Interval Pengingat</string>
+    <string name="notif_title_label">Judul Notifikasi</string>
+    <string name="notif_message_label">Isi Pesan Notifikasi</string>
+    <string name="notif_default_title">Antigrafity Remote</string>
+    <string name="notif_default_message">Waktunya memeriksa status sesi Antigrafity Anda.</string>
+    <string name="notif_save_action">Simpan &amp; Jadwalkan</string>
+    <string name="notif_test_action">Kirim Tes</string>
+    <string name="notif_saved_toast">Pengaturan notifikasi berhasil disimpan</string>
+    <string name="notif_test_sent_toast">Notifikasi tes telah dikirim</string>
+    <string name="notif_bridge_hint_title">Jembatan Web Aktif (AndroidBridge)</string>
+    <string name="notif_bridge_hint_body">Halaman web dapat memicu notifikasi langsung melalui window.AndroidBridge.showNotification(judul, pesan).</string>
+    <string name="notif_channel_reminder_name">Pengingat Antigrafity</string>
+    <string name="notif_channel_reminder_desc">Notifikasi pengingat lokal terjadwal dari Antigrafity Remote</string>
+    <string name="notif_channel_web_name">Status Web Antigrafity</string>
+    <string name="notif_channel_web_desc">Notifikasi real-time yang dipicu dari halaman web antigravity.google.com</string>
+</resources>
