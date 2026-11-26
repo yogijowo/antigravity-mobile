@@ -41,6 +41,14 @@ class WebViewController {
     var currentTrustedUrl: String = WebHostPolicy.HOME_URL
         private set
 
+    @Volatile
+    var isWebAtTop: Boolean = true
+        private set
+
+    fun updateWebAtTop(atTop: Boolean) {
+        isWebAtTop = atTop
+    }
+
     fun attachMainWebView(webView: WebView) {
         mainWebView = webView
     }
@@ -65,6 +73,7 @@ class WebViewController {
     fun onPageStarted(url: String?) {
         val safeUrl = url ?: currentTrustedUrl
         currentTrustedUrl = safeUrl
+        isWebAtTop = true
         _uiState.update {
             it.copy(
                 currentUrl = safeUrl,
@@ -80,6 +89,7 @@ class WebViewController {
         val safeUrl = url ?: currentTrustedUrl
         currentTrustedUrl = safeUrl
         flushCookies()
+        mainWebView?.let { injectScrollGuard(it) }
         _uiState.update {
             it.copy(
                 currentUrl = safeUrl,
@@ -88,6 +98,57 @@ class WebViewController {
                 progress = 100,
                 canGoBack = mainWebView?.canGoBack() == true,
             )
+        }
+    }
+
+    private fun injectScrollGuard(webView: WebView) {
+        val script = """
+            (function() {
+              if (window.__antigravityScrollGuardInstalled) return;
+              window.__antigravityScrollGuardInstalled = true;
+              var lastAllowed = null;
+
+              function notify(allowed) {
+                if (lastAllowed === allowed) return;
+                lastAllowed = allowed;
+                try {
+                  if (window.AndroidBridge && typeof window.AndroidBridge.setPullToRefreshAllowed === 'function') {
+                    window.AndroidBridge.setPullToRefreshAllowed(!!allowed);
+                  }
+                } catch (e) {}
+              }
+
+              function isPageAtTop(target) {
+                if ((window.scrollY || 0) > 1) return false;
+                if (document.documentElement && document.documentElement.scrollTop > 1) return false;
+                if (document.body && document.body.scrollTop > 1) return false;
+                var node = target;
+                while (node) {
+                  if (node.nodeType === 1 && node.scrollTop > 1) {
+                    return false;
+                  }
+                  if (node.parentNode) {
+                    node = node.parentNode;
+                  } else if (node.host) {
+                    node = node.host;
+                  } else {
+                    break;
+                  }
+                }
+                return true;
+              }
+
+              window.addEventListener('touchstart', function(e) {
+                notify(isPageAtTop(e.target));
+              }, { capture: true, passive: true });
+
+              window.addEventListener('scroll', function(e) {
+                notify(isPageAtTop(e.target));
+              }, { capture: true, passive: true });
+            })();
+        """.trimIndent()
+        webView.post {
+            webView.evaluateJavascript(script, null)
         }
     }
 

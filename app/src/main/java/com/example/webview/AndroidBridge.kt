@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong
 class AndroidBridge(
     private val context: Context,
     private val currentOriginProvider: () -> String?,
+    private val onPullToRefreshAllowedChanged: (Boolean) -> Unit = {},
 ) {
     private val lastNotificationTimestampMs = AtomicLong(0L)
 
@@ -53,6 +54,14 @@ class AndroidBridge(
             return false
         }
         return NotificationHelper.hasNotificationPermission(context.applicationContext)
+    }
+
+    @JavascriptInterface
+    fun setPullToRefreshAllowed(allowed: Boolean) {
+        if (!WebHostPolicy.isTrustedBridgeOrigin(currentOriginProvider())) {
+            return
+        }
+        onPullToRefreshAllowedChanged(allowed)
     }
 
     private fun allowByRateLimit(): Boolean {

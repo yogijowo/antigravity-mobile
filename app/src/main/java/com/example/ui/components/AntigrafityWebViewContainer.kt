@@ -1,14 +1,18 @@
 package com.example.ui.components
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Message
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import kotlin.math.abs
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -89,18 +93,26 @@ fun AntigrafityWebViewContainer(
                 .fillMaxSize()
                 .testTag("antigrafity_webview"),
             factory = { ctx ->
-                val swipeLayout = SwipeRefreshLayout(ctx).apply {
+                val density = ctx.resources.displayMetrics.density
+                val swipeLayout = SmartWebSwipeRefreshLayout(
+                    context = ctx,
+                    topPullZonePx = 96f * density,
+                ).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     setColorSchemeColors(primaryArgb)
                     setProgressBackgroundColorSchemeColor(surfaceArgb)
+                    setDistanceToTriggerSync((128f * density).toInt())
                 }
 
                 val bridge = AndroidBridge(
                     context = ctx.applicationContext,
                     currentOriginProvider = { controller.currentTrustedUrl },
+                    onPullToRefreshAllowedChanged = { allowed ->
+                        controller.updateWebAtTop(allowed)
+                    },
                 )
 
                 val webView = WebView(ctx).apply {
@@ -180,7 +192,7 @@ fun AntigrafityWebViewContainer(
 
                 swipeLayout.addView(webView)
                 swipeLayout.setOnChildScrollUpCallback { _, _ ->
-                    webView.scrollY > 0
+                    webView.scrollY > 0 || !controller.isWebAtTop
                 }
                 swipeLayout.setOnRefreshListener {
                     controller.reload(fromPullToRefresh = true)
@@ -416,5 +428,46 @@ private fun OAuthPopupOverlay(
                 },
             )
         }
+    }
+}
+
+/**
+ * Custom SwipeRefreshLayout that only permits pull-to-refresh when the drag starts in the
+ * top edge zone and moves predominantly downward, preventing accidental reloads when scrolling
+ * up inside nested scrollable SPA containers (e.g. chat/process feeds).
+ */
+private class SmartWebSwipeRefreshLayout(
+    context: Context,
+    private val topPullZonePx: Float,
+) : SwipeRefreshLayout(context) {
+
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var initialX = 0f
+    private var initialY = 0f
+    private var allowRefreshGesture = false
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                initialX = ev.x
+                initialY = ev.y
+                allowRefreshGesture = initialY <= topPullZonePx
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!allowRefreshGesture) {
+                    return false
+                }
+                val dx = abs(ev.x - initialX)
+                val dy = ev.y - initialY
+                if (dy < 0f || (dx > touchSlop && dx > dy)) {
+                    allowRefreshGesture = false
+                    return false
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                allowRefreshGesture = false
+            }
+        }
+        return allowRefreshGesture && super.onInterceptTouchEvent(ev)
     }
 }
