@@ -38,7 +38,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
@@ -91,6 +93,7 @@ fun AntigrafityWebViewContainer(
     ) -> Unit,
     onRichContentPasted: (Uri, String?) -> Unit,
     onAgentProcessUpdate: (isRunning: Boolean, parentStep: String, finalSummary: String) -> Unit,
+    onPickDeviceGoogleAccount: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -140,6 +143,9 @@ fun AntigrafityWebViewContainer(
                     },
                     onAgentProcessUpdate = { isRunning, parentStep, finalSummary ->
                         onAgentProcessUpdate(isRunning, parentStep, finalSummary)
+                    },
+                    onVoiceChatSendResult = { requestId, sent ->
+                        controller.onVoiceChatSendResultFromBridge(requestId, sent)
                     },
                 )
 
@@ -416,6 +422,21 @@ fun AntigrafityWebViewContainer(
             }
         }
 
+        // Native Android device Google Account quick-pick bar when on accounts.google.com
+        AnimatedVisibility(
+            visible = uiState.isOnGoogleSignInPage && uiState.activePopupMessage == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        ) {
+            DeviceGoogleAccountBanner(
+                onClick = onPickDeviceGoogleAccount,
+                modifier = Modifier.testTag("google_device_account_banner"),
+            )
+        }
+
         // In-app OAuth / Google Sign-In popup WebView overlay
         val popupMessage = uiState.activePopupMessage
         if (popupMessage != null) {
@@ -423,9 +444,45 @@ fun AntigrafityWebViewContainer(
                 resultMessage = popupMessage,
                 controller = controller,
                 isDarkTheme = isDarkTheme,
+                showDeviceAccountPicker = uiState.isPopupOnGoogleSignInPage,
+                onPickDeviceGoogleAccount = onPickDeviceGoogleAccount,
                 onHttpsDocumentPreview = onHttpsDocumentPreview,
                 onBlobOrDataDocumentPreview = onBlobOrDataDocumentPreview,
                 onDismiss = { controller.closePopup() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeviceGoogleAccountBanner(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.widthIn(max = 420.dp),
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.96f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.AccountCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = stringResource(R.string.google_pick_device_account),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
@@ -436,6 +493,8 @@ private fun OAuthPopupOverlay(
     resultMessage: Message,
     controller: WebViewController,
     isDarkTheme: Boolean,
+    showDeviceAccountPicker: Boolean,
+    onPickDeviceGoogleAccount: () -> Unit,
     onHttpsDocumentPreview: (String, String?, String?, String?) -> Unit,
     onBlobOrDataDocumentPreview: (String, String?, String?) -> Unit,
     onDismiss: () -> Unit,
@@ -481,15 +540,47 @@ private fun OAuthPopupOverlay(
                     }
                 }
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.testTag("oauth_popup_close_button"),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = stringResource(R.string.cd_close_popup),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
+                    if (showDeviceAccountPicker) {
+                        Surface(
+                            onClick = onPickDeviceGoogleAccount,
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.testTag("oauth_popup_pick_account_button"),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AccountCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.google_pick_device_account),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("oauth_popup_close_button"),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = stringResource(R.string.cd_close_popup),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
 
@@ -535,8 +626,14 @@ private fun OAuthPopupOverlay(
                                 return !WebHostPolicy.isSafeHttpsUrl(destination)
                             }
 
+                            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                                super.onPageStarted(view, url, favicon)
+                                controller.onPopupUrlChanged(url)
+                            }
+
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
+                                controller.onPopupUrlChanged(url)
                                 controller.flushCookies()
                             }
                         }

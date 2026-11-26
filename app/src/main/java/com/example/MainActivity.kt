@@ -1,6 +1,7 @@
 package com.example
 
 import android.Manifest
+import android.accounts.AccountManager
 import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
@@ -117,6 +118,7 @@ private fun AntigrafityRemoteApp(
     var pendingFileCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     var pendingSaveSourceFile by remember { mutableStateOf<File?>(null) }
     var pendingOpenAiAssistantAfterPermission by remember { mutableStateOf(false) }
+    var hasAutoPromptedGoogleAccount by remember { mutableStateOf(false) }
 
     val voiceManager = remember(context, webViewController) {
         VoiceCommandManager(
@@ -258,6 +260,49 @@ private fun AntigrafityRemoteApp(
                     if (saved) R.string.doc_save_success else R.string.doc_save_failed,
                 ),
             )
+        }
+    }
+
+    // Zero-permission native Android device Google account picker (no GET_ACCOUNTS needed)
+    val googleAccountPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val chosenEmail = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)?.trim().orEmpty()
+        if (chosenEmail.isNotEmpty()) {
+            webViewController.applyChosenGoogleAccount(chosenEmail)
+            viewModel.emitSnackbar(context.getString(R.string.google_account_applied, chosenEmail))
+        }
+    }
+
+    fun launchDeviceGoogleAccountPicker() {
+        val intent = AccountManager.newChooseAccountIntent(
+            null,
+            null,
+            arrayOf("com.google"),
+            null,
+            null,
+            null,
+            null,
+        )
+        runCatching {
+            googleAccountPickerLauncher.launch(intent)
+        }.onFailure {
+            viewModel.emitSnackbar(context.getString(R.string.google_account_picker_unavailable))
+        }
+    }
+
+    // Automatically offer the device's signed-in Google accounts on first Google Sign-In page load
+    val isAnyGoogleSignInVisible = webUiState.isOnGoogleSignInPage || webUiState.isPopupOnGoogleSignInPage
+    LaunchedEffect(isAnyGoogleSignInVisible, webUiState.isLoading) {
+        if (!isAnyGoogleSignInVisible) {
+            hasAutoPromptedGoogleAccount = false
+        } else if (!hasAutoPromptedGoogleAccount && !webUiState.isLoading) {
+            kotlinx.coroutines.delay(350L)
+            if (!hasAutoPromptedGoogleAccount) {
+                hasAutoPromptedGoogleAccount = true
+                launchDeviceGoogleAccountPicker()
+            }
         }
     }
 
@@ -501,6 +546,9 @@ private fun AntigrafityRemoteApp(
                 },
                 onAgentProcessUpdate = { isRunning, parentStep, finalSummary ->
                     aiAssistantController.onAgentProcessUpdate(isRunning, parentStep, finalSummary)
+                },
+                onPickDeviceGoogleAccount = {
+                    launchDeviceGoogleAccountPicker()
                 },
             )
 

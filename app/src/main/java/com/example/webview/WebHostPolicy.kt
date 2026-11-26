@@ -65,6 +65,19 @@ object WebHostPolicy {
         }
     }
 
+    fun isGoogleSignInUrl(url: String?): Boolean {
+        if (!isSafeHttpsUrl(url)) return false
+        val uri = runCatching { url!!.trim().toUri() }.getOrNull() ?: return false
+        val host = uri.host?.lowercase() ?: return false
+        if (host != "accounts.google.com") return false
+        val path = uri.path?.lowercase().orEmpty()
+        // Exclude logout / silent cookie-check endpoints
+        if (path.contains("logout") || path.contains("checkcookie") || path.contains("setosid")) {
+            return false
+        }
+        return true
+    }
+
     fun isLikelyDocumentUrl(url: String?, mimeType: String? = null): Boolean {
         val cleanMime = mimeType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
         if (cleanMime.isNotBlank() && documentMimePrefixes.any { cleanMime.startsWith(it) }) {

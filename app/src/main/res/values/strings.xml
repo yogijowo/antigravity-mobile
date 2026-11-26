@@ -106,4 +106,12 @@
     <string name="ai_waiting_process">Menunggu respons dari Antigravity…</string>
     <string name="cd_ai_mute_toggle">Bisukan atau nyalakan suara asisten AI</string>
     <string name="cd_ai_close">Tutup mode ngobrol AI</string>
+    <string name="ai_no_chat_found_speech">Kolom chat belum ditemukan di layar ini. Pastikan sesi chat sudah terbuka, lalu coba lagi.</string>
+    <string name="ai_open_web_action">Lihat Halaman Web</string>
+
+    <!-- Device Google Account Login -->
+    <string name="google_pick_device_account">Pilih Akun Google di HP</string>
+    <string name="google_pick_device_account_sub">Gunakan akun Google yang sudah login di perangkat ini</string>
+    <string name="google_account_applied">Menggunakan akun %1$s…</string>
+    <string name="google_account_picker_unavailable">Tidak ada akun Google ditemukan di perangkat ini</string>
 </resources>

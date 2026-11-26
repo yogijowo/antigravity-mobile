@@ -202,6 +202,7 @@ fun AiFaceMatrixOverlay(
                 AiProcessAndTranscriptCard(
                     state = state,
                     accentColor = accentColor,
+                    onOpenWeb = onClose,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -335,6 +336,7 @@ private fun PhaseStatusChip(
 private fun AiProcessAndTranscriptCard(
     state: AiAssistantUiState,
     accentColor: Color,
+    onOpenWeb: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -419,6 +421,28 @@ private fun AiProcessAndTranscriptCard(
                         .fillMaxWidth()
                         .testTag("ai_live_transcript_text"),
                 )
+
+                if (!state.errorMessage.isNullOrBlank() && state.phase == AiAssistantPhase.IDLE) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Surface(
+                            onClick = onOpenWeb,
+                            shape = RoundedCornerShape(999.dp),
+                            color = accentColor.copy(alpha = 0.16f),
+                            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)),
+                            modifier = Modifier.testTag("ai_open_web_button"),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.ai_open_web_action),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = accentColor,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                    }
+                }
 
                 if (state.lastUserPrompt.isNotBlank() && state.liveTranscript.isBlank()) {
                     Text(

@@ -17,6 +17,7 @@ class AndroidBridge(
     private val onPullToRefreshAllowedChanged: (Boolean) -> Unit = {},
     private val onBlobFileReady: (base64DataUrl: String, mimeType: String, fileName: String) -> Unit = { _, _, _ -> },
     private val onAgentProcessUpdate: (isRunning: Boolean, parentStep: String, finalSummary: String) -> Unit = { _, _, _ -> },
+    private val onVoiceChatSendResult: (requestId: String, sent: Boolean) -> Unit = { _, _ -> },
 ) {
     private val lastNotificationTimestampMs = AtomicLong(0L)
 
@@ -85,6 +86,16 @@ class AndroidBridge(
         val cleanStep = sanitize(parentStep, maxLength = 180)
         val cleanSummary = sanitize(finalSummary, maxLength = 260)
         onAgentProcessUpdate(isRunning, cleanStep, cleanSummary)
+    }
+
+    @JavascriptInterface
+    fun onVoiceChatSendResult(requestId: String?, sent: Boolean) {
+        if (!WebHostPolicy.isTrustedBridgeOrigin(currentOriginProvider())) {
+            return
+        }
+        val id = sanitize(requestId, maxLength = 64)
+        if (id.isBlank()) return
+        onVoiceChatSendResult(id, sent)
     }
 
     private fun allowByRateLimit(): Boolean {

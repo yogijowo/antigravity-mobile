@@ -528,15 +528,16 @@ class AiVoiceAssistantController(
             mainHandler.post {
                 if (!_state.value.isVisible) return@post
                 if (!sent) {
-                    val noInput = appContext.getString(R.string.voice_no_input_found)
+                    val noInput = appContext.getString(R.string.ai_no_chat_found_speech)
                     _state.update {
                         it.copy(
-                            phase = AiAssistantPhase.SPEAKING_DONE,
+                            phase = AiAssistantPhase.IDLE,
+                            currentProcessText = "",
                             errorMessage = noInput,
                             statusSubtext = noInput,
                         )
                     }
-                    speakIndonesian("Kolom chat belum aktif di halaman. Silakan buka percakapan terlebih dahulu.", UTT_DONE)
+                    speakIndonesian(noInput, UTT_ERROR)
                     return@post
                 }
 
@@ -604,6 +605,7 @@ class AiVoiceAssistantController(
     private companion object {
         const val UTT_GREETING = "utt_ai_greeting"
         const val UTT_DONE = "utt_ai_done"
+        const val UTT_ERROR = "utt_ai_error"
         const val UTT_STEP_PREFIX = "utt_ai_step_"
     }
 }
