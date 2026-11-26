@@ -3,15 +3,20 @@ package com.example.ui.components
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Message
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.webkit.PermissionRequest
+import android.webkit.URLUtil
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.view.ViewCompat
 import kotlin.math.abs
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -69,6 +74,23 @@ import com.example.webview.WebViewUiState
 fun AntigrafityWebViewContainer(
     controller: WebViewController,
     uiState: WebViewUiState,
+    onShowFileChooser: (
+        params: WebChromeClient.FileChooserParams?,
+        callback: ValueCallback<Array<Uri>>,
+    ) -> Boolean,
+    onHttpsDocumentPreview: (
+        url: String,
+        userAgent: String?,
+        contentDisposition: String?,
+        mimeType: String?,
+    ) -> Unit,
+    onBlobOrDataDocumentPreview: (
+        base64DataUrl: String,
+        mimeType: String?,
+        fileName: String?,
+    ) -> Unit,
+    onRichContentPasted: (Uri, String?) -> Unit,
+    onAgentProcessUpdate: (isRunning: Boolean, parentStep: String, finalSummary: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -113,6 +135,12 @@ fun AntigrafityWebViewContainer(
                     onPullToRefreshAllowedChanged = { allowed ->
                         controller.updateWebAtTop(allowed)
                     },
+                    onBlobFileReady = { dataUrl, mimeType, fileName ->
+                        onBlobOrDataDocumentPreview(dataUrl, mimeType, fileName)
+                    },
+                    onAgentProcessUpdate = { isRunning, parentStep, finalSummary ->
+                        onAgentProcessUpdate(isRunning, parentStep, finalSummary)
+                    },
                 )
 
                 val webView = WebView(ctx).apply {
@@ -127,14 +155,66 @@ fun AntigrafityWebViewContainer(
 
                     addJavascriptInterface(bridge, AndroidBridge.BRIDGE_NAME)
 
+                    // Intercept rich image/file paste directly from Gboard / Samsung Keyboard clipboard
+                    ViewCompat.setOnReceiveContentListener(
+                        this,
+                        arrayOf("image/*", "application/pdf"),
+                    ) { _, payload ->
+                        val clip = payload.clip
+                        var handledUri = false
+                        for (i in 0 until clip.itemCount) {
+                            val uri = clip.getItemAt(i).uri
+                            if (uri != null) {
+                                val mime = ctx.contentResolver.getType(uri)
+                                onRichContentPasted(uri, mime)
+                                handledUri = true
+                            }
+                        }
+                        if (handledUri) null else payload
+                    }
+
+                    // Handle PDFs, Office documents, blob downloads, and attachments cleanly
+                    setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+                        when {
+                            url.startsWith("blob:", ignoreCase = true) -> {
+                                val guessedName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                                controller.fetchBlobUrl(url, mimeType, guessedName)
+                            }
+                            WebHostPolicy.isSafePreviewDataUrl(url) -> {
+                                val guessedName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                                onBlobOrDataDocumentPreview(url, mimeType, guessedName)
+                            }
+                            WebHostPolicy.isSafeHttpsUrl(url) -> {
+                                onHttpsDocumentPreview(url, userAgent, contentDisposition, mimeType)
+                            }
+                        }
+                    }
+
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?,
                             request: WebResourceRequest?,
                         ): Boolean {
                             val destination = request?.url?.toString() ?: return true
+                            if (destination.startsWith("blob:", ignoreCase = true)) {
+                                controller.fetchBlobUrl(destination)
+                                return true
+                            }
+                            if (WebHostPolicy.isSafePreviewDataUrl(destination)) {
+                                onBlobOrDataDocumentPreview(destination, null, "document")
+                                return true
+                            }
                             if (!WebHostPolicy.isSafeHttpsUrl(destination)) {
                                 // Block unsafe schemes (javascript:, file:, content:, intent://)
+                                return true
+                            }
+                            if (WebHostPolicy.isLikelyDocumentUrl(destination)) {
+                                onHttpsDocumentPreview(
+                                    destination,
+                                    view?.settings?.userAgentString,
+                                    null,
+                                    null,
+                                )
                                 return true
                             }
                             if (WebHostPolicy.shouldKeepInApp(destination)) {
@@ -175,6 +255,31 @@ fun AntigrafityWebViewContainer(
                         override fun onProgressChanged(view: WebView?, newProgress: Int) {
                             super.onProgressChanged(view, newProgress)
                             controller.onProgressChanged(newProgress)
+                        }
+
+                        override fun onShowFileChooser(
+                            webView: WebView?,
+                            filePathCallback: ValueCallback<Array<Uri>>?,
+                            fileChooserParams: FileChooserParams?,
+                        ): Boolean {
+                            if (filePathCallback == null) return false
+                            return onShowFileChooser(fileChooserParams, filePathCallback)
+                        }
+
+                        override fun onPermissionRequest(request: PermissionRequest?) {
+                            if (request == null) return
+                            val originUrl = request.origin?.toString()
+                            if (WebHostPolicy.isTrustedBridgeOrigin(originUrl)) {
+                                val allowedResources = request.resources.filter { res ->
+                                    res == PermissionRequest.RESOURCE_AUDIO_CAPTURE ||
+                                        res == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID
+                                }.toTypedArray()
+                                if (allowedResources.isNotEmpty()) {
+                                    request.grant(allowedResources)
+                                    return
+                                }
+                            }
+                            request.deny()
                         }
 
                         override fun onCreateWindow(
@@ -318,6 +423,8 @@ fun AntigrafityWebViewContainer(
                 resultMessage = popupMessage,
                 controller = controller,
                 isDarkTheme = isDarkTheme,
+                onHttpsDocumentPreview = onHttpsDocumentPreview,
+                onBlobOrDataDocumentPreview = onBlobOrDataDocumentPreview,
                 onDismiss = { controller.closePopup() },
             )
         }
@@ -329,6 +436,8 @@ private fun OAuthPopupOverlay(
     resultMessage: Message,
     controller: WebViewController,
     isDarkTheme: Boolean,
+    onHttpsDocumentPreview: (String, String?, String?, String?) -> Unit,
+    onBlobOrDataDocumentPreview: (String, String?, String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val backgroundArgb = MaterialTheme.colorScheme.background.toArgb()
@@ -403,12 +512,51 @@ private fun OAuthPopupOverlay(
                                 request: WebResourceRequest?,
                             ): Boolean {
                                 val destination = request?.url?.toString() ?: return true
+                                if (destination.startsWith("blob:", ignoreCase = true)) {
+                                    controller.fetchBlobUrl(destination)
+                                    onDismiss()
+                                    return true
+                                }
+                                if (WebHostPolicy.isSafePreviewDataUrl(destination)) {
+                                    onBlobOrDataDocumentPreview(destination, null, "document")
+                                    onDismiss()
+                                    return true
+                                }
+                                if (WebHostPolicy.isLikelyDocumentUrl(destination)) {
+                                    onHttpsDocumentPreview(
+                                        destination,
+                                        view?.settings?.userAgentString,
+                                        null,
+                                        null,
+                                    )
+                                    onDismiss()
+                                    return true
+                                }
                                 return !WebHostPolicy.isSafeHttpsUrl(destination)
                             }
 
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
                                 controller.flushCookies()
+                            }
+                        }
+
+                        setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+                            when {
+                                url.startsWith("blob:", ignoreCase = true) -> {
+                                    val guessedName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                                    controller.fetchBlobUrl(url, mimeType, guessedName)
+                                    onDismiss()
+                                }
+                                WebHostPolicy.isSafePreviewDataUrl(url) -> {
+                                    val guessedName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                                    onBlobOrDataDocumentPreview(url, mimeType, guessedName)
+                                    onDismiss()
+                                }
+                                WebHostPolicy.isSafeHttpsUrl(url) -> {
+                                    onHttpsDocumentPreview(url, userAgent, contentDisposition, mimeType)
+                                    onDismiss()
+                                }
                             }
                         }
 

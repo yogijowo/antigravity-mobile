@@ -15,6 +15,8 @@ class AndroidBridge(
     private val context: Context,
     private val currentOriginProvider: () -> String?,
     private val onPullToRefreshAllowedChanged: (Boolean) -> Unit = {},
+    private val onBlobFileReady: (base64DataUrl: String, mimeType: String, fileName: String) -> Unit = { _, _, _ -> },
+    private val onAgentProcessUpdate: (isRunning: Boolean, parentStep: String, finalSummary: String) -> Unit = { _, _, _ -> },
 ) {
     private val lastNotificationTimestampMs = AtomicLong(0L)
 
@@ -62,6 +64,27 @@ class AndroidBridge(
             return
         }
         onPullToRefreshAllowedChanged(allowed)
+    }
+
+    @JavascriptInterface
+    fun onBlobFileReady(base64DataUrl: String?, mimeType: String?, fileName: String?) {
+        if (!WebHostPolicy.isTrustedBridgeOrigin(currentOriginProvider())) {
+            return
+        }
+        if (base64DataUrl.isNullOrBlank()) return
+        val safeMime = sanitize(mimeType, maxLength = 120).ifBlank { "application/octet-stream" }
+        val safeName = sanitize(fileName, maxLength = 120).ifBlank { "document" }
+        onBlobFileReady(base64DataUrl, safeMime, safeName)
+    }
+
+    @JavascriptInterface
+    fun onAgentProcessUpdate(isRunning: Boolean, parentStep: String?, finalSummary: String?) {
+        if (!WebHostPolicy.isTrustedBridgeOrigin(currentOriginProvider())) {
+            return
+        }
+        val cleanStep = sanitize(parentStep, maxLength = 180)
+        val cleanSummary = sanitize(finalSummary, maxLength = 260)
+        onAgentProcessUpdate(isRunning, cleanStep, cleanSummary)
     }
 
     private fun allowByRateLimit(): Boolean {

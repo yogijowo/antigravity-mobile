@@ -64,4 +64,46 @@
     <string name="notif_channel_reminder_desc">Notifikasi pengingat lokal terjadwal dari Antigrafity Remote</string>
     <string name="notif_channel_web_name">Status Web Antigrafity</string>
     <string name="notif_channel_web_desc">Notifikasi real-time yang dipicu dari halaman web antigravity.google.com</string>
+
+    <!-- Paste & Document Preview -->
+    <string name="action_paste_image">Tempel Gambar</string>
+    <string name="cd_action_paste_image">Tempel gambar dari clipboard ke halaman web</string>
+    <string name="paste_image_success">Gambar berhasil ditempel ke kolom input</string>
+    <string name="paste_image_failed">Tidak dapat menempel gambar. Pastikan kolom prompt aktif.</string>
+    <string name="paste_clipboard_empty">Clipboard kosong atau tidak berisi gambar/teks</string>
+    <string name="paste_image_too_large">Ukuran gambar terlalu besar (maks. 15 MB)</string>
+    <string name="doc_preview_loading">Memuat pratinjau dokumen…</string>
+    <string name="doc_preview_open_external">Buka di App Lain</string>
+    <string name="doc_preview_share">Bagikan</string>
+    <string name="doc_preview_close">Tutup pratinjau dokumen</string>
+    <string name="doc_preview_page_indicator">Halaman %1$d / %2$d</string>
+    <string name="doc_preview_error">Gagal membuka dokumen: %1$s</string>
+    <string name="doc_preview_opened_external">Membuka dokumen di aplikasi eksternal…</string>
+    <string name="doc_preview_no_app">Tidak ada aplikasi pembuka untuk jenis dokumen ini. Gunakan Bagikan.</string>
+    <string name="doc_preview_zoom_in">Perbesar</string>
+    <string name="doc_preview_zoom_out">Perkecil</string>
+    <string name="doc_preview_download">Simpan ke Folder</string>
+    <string name="doc_save_success">Dokumen berhasil disimpan ke folder pilihan</string>
+    <string name="doc_save_failed">Gagal menyimpan dokumen ke folder pilihan</string>
+    <string name="file_upload_chooser_title">Pilih gambar atau dokumen</string>
+
+    <!-- AI Face Matrix Conversational Assistant -->
+    <string name="action_ai_talk">Ngobrol AI</string>
+    <string name="action_dictate">Dikte</string>
+    <string name="cd_action_ai_talk">Buka mode ngobrol langsung dengan asisten AI</string>
+    <string name="ai_mode_title">Asisten Antigravity</string>
+    <string name="ai_status_greeting">Menyapa…</string>
+    <string name="ai_status_listening">Mendengarkan suara Anda…</string>
+    <string name="ai_status_sending">Mengirim perintah ke Antigravity…</string>
+    <string name="ai_status_processing">Memproses di Antigravity (Mic terkunci)</string>
+    <string name="ai_status_speaking">Asisten sedang berbicara…</string>
+    <string name="ai_status_idle">Ketuk untuk mulai berbicara</string>
+    <string name="ai_mic_locked_hint">Suara dikunci sampai proses selesai</string>
+    <string name="ai_mic_ready_hint">Silakan berbicara dalam Bahasa Indonesia</string>
+    <string name="ai_process_header">PROSES INDUK AKTIF</string>
+    <string name="ai_greeting_speech">Halo, saya asisten Antigravity. Silakan sampaikan perintah Anda.</string>
+    <string name="ai_done_speech">Semua proses sudah selesai. Silakan lanjutkan perintah Anda.</string>
+    <string name="ai_waiting_process">Menunggu respons dari Antigravity…</string>
+    <string name="cd_ai_mute_toggle">Bisukan atau nyalakan suara asisten AI</string>
+    <string name="cd_ai_close">Tutup mode ngobrol AI</string>
 </resources>

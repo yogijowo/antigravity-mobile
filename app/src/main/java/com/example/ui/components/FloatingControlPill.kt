@@ -37,6 +37,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -83,15 +85,18 @@ fun FloatingControlPill(
     isTucked: Boolean,
     canGoBack: Boolean,
     isVoiceActive: Boolean,
+    isAiAssistantActive: Boolean,
     notificationsEnabled: Boolean,
     onToggleExpand: () -> Unit,
     onTuck: () -> Unit,
     onUntuck: () -> Unit,
     onBack: () -> Unit,
     onHome: () -> Unit,
+    onAiTalkClick: () -> Unit,
     onVoiceClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onRefreshClick: () -> Unit,
+    onPasteImageClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -106,8 +111,8 @@ fun FloatingControlPill(
         val edgeMarginPx = with(density) { 12.dp.toPx() }
         val collapsedPillWidthPx = with(density) { 56.dp.toPx() }
         val collapsedPillHeightPx = with(density) { 56.dp.toPx() }
-        val expandedWidthPx = with(density) { 296.dp.toPx() }
-        val expandedHeightPx = with(density) { 120.dp.toPx() }
+        val expandedWidthPx = with(density) { 308.dp.toPx() }
+        val expandedHeightPx = with(density) { 126.dp.toPx() }
         val tuckedWidthPx = with(density) { 30.dp.toPx() }
 
         val maxWidthPx = constraints.maxWidth.toFloat()
@@ -218,18 +223,21 @@ fun FloatingControlPill(
                     expanded -> ExpandedRemoteDock(
                         canGoBack = canGoBack,
                         isVoiceActive = isVoiceActive,
+                        isAiAssistantActive = isAiAssistantActive,
                         notificationsEnabled = notificationsEnabled,
                         onBack = onBack,
                         onHome = onHome,
+                        onAiTalkClick = onAiTalkClick,
                         onVoiceClick = onVoiceClick,
                         onNotificationsClick = onNotificationsClick,
                         onRefreshClick = onRefreshClick,
+                        onPasteImageClick = onPasteImageClick,
                         onTuck = onTuck,
                         onClose = onToggleExpand,
                     )
 
                     else -> CompactFloatingFab(
-                        isVoiceActive = isVoiceActive,
+                        isVoiceActive = isVoiceActive || isAiAssistantActive,
                         notificationsEnabled = notificationsEnabled,
                         onClick = onToggleExpand,
                     )
@@ -317,18 +325,21 @@ private fun TuckedEdgeHandle(
 private fun ExpandedRemoteDock(
     canGoBack: Boolean,
     isVoiceActive: Boolean,
+    isAiAssistantActive: Boolean,
     notificationsEnabled: Boolean,
     onBack: () -> Unit,
     onHome: () -> Unit,
+    onAiTalkClick: () -> Unit,
     onVoiceClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onRefreshClick: () -> Unit,
+    onPasteImageClick: () -> Unit,
     onTuck: () -> Unit,
     onClose: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
-            .width(296.dp)
+            .width(308.dp)
             .testTag("floating_control_dock"),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
@@ -361,13 +372,13 @@ private fun ExpandedRemoteDock(
                     testTag = "pill_action_home",
                 )
                 PillQuickAction(
-                    icon = Icons.Rounded.Mic,
-                    label = stringResource(R.string.action_voice),
-                    contentDescription = stringResource(R.string.cd_action_voice),
-                    highlighted = isVoiceActive,
-                    highlightColor = VoiceActiveCoral,
-                    onClick = onVoiceClick,
-                    testTag = "pill_action_voice",
+                    icon = Icons.Rounded.Face,
+                    label = stringResource(R.string.action_ai_talk),
+                    contentDescription = stringResource(R.string.cd_action_ai_talk),
+                    highlighted = isAiAssistantActive,
+                    highlightColor = MaterialTheme.colorScheme.primary,
+                    onClick = onAiTalkClick,
+                    testTag = "pill_action_ai_talk",
                 )
                 PillQuickAction(
                     icon = if (notificationsEnabled) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsNone,
@@ -400,7 +411,7 @@ private fun ExpandedRemoteDock(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                         .testTag("pill_action_tuck"),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.VisibilityOff,
@@ -415,7 +426,49 @@ private fun ExpandedRemoteDock(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = onVoiceClick)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                        .testTag("pill_action_voice"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Mic,
+                        contentDescription = stringResource(R.string.cd_action_voice),
+                        tint = if (isVoiceActive) VoiceActiveCoral else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.action_dictate),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isVoiceActive) VoiceActiveCoral else MaterialTheme.colorScheme.primary,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = onPasteImageClick)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                        .testTag("pill_action_paste_image"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ContentPaste,
+                        contentDescription = stringResource(R.string.cd_action_paste_image),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.action_paste_image),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
 
                 Row(
                     modifier = Modifier
@@ -429,13 +482,13 @@ private fun ExpandedRemoteDock(
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.cd_floating_menu_toggle),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
                         text = stringResource(R.string.action_close),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
